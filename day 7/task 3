@@ -1,0 +1,51 @@
+#include <iostream>
+#include <csignal>
+#include <unistd.h>
+
+volatile sig_atomic_t alarm_counter = 0;
+
+void handle_sigalrm(int signal) {
+    if (signal == SIGALRM) {
+        std::cout << "Received SIGALRM, counter: " << ++alarm_counter << std::endl;
+        alarm(1);  // Reset the alarm for another second
+    }
+}
+
+void handle_sigint(int signal) {
+    if (signal == SIGINT) {
+        std::cout << "Received SIGINT, exiting gracefully..." << std::endl;
+        exit(0);
+    }
+}
+
+void setup_signal_handlers() {
+    // Set up SIGALRM handler
+    struct sigaction sa;
+    sa.sa_handler = handle_sigalrm;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGALRM, &sa, nullptr);
+
+    // Set up SIGINT handler
+    signal(SIGINT, handle_sigint);
+
+    // Ignore SIGTERM
+    signal(SIGTERM, SIG_IGN);
+}
+
+int main() {
+    std::cout << "Starting the program..." << std::endl;
+
+    // Set up signal handlers
+    setup_signal_handlers();
+
+    // Set an alarm to go off in 1 second
+    alarm(1);
+
+    // Infinite loop to keep the program running
+    while (true) {
+        pause();  
+    }
+
+    return 0;
+}
