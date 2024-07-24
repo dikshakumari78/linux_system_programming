@@ -1,0 +1,26 @@
+#include <iostream>
+#include <csignal>
+#include <unistd.h>
+
+// Signal handler function
+void handle_alarm(int sig)
+{
+        std::cout << "Alarm signal ( " << sig << ") received.\n";
+}
+
+int main() {
+        // Set up the signal handler for SIGALARM
+        std::signal(SIGALARM, handle_alarm);
+
+        // Schedule an alarm in 5 seconds
+        std::cout << "Setting an alarm for 5 seconds..\n";
+        alarm(5);
+
+        // Enter an infinite loop to keep the program running
+        while (true) {
+                // Do something
+                sleep(1);
+                std::cout << "Waiting for the alaram...\n";
+        }
+        return 0;
+}
