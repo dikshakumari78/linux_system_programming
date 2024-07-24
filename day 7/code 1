@@ -1,0 +1,40 @@
+#include <iostream>
+#include <vector>
+
+// Define a marker value for processed signals
+const int SIGPROCMARK = 1;
+
+// Function to process a signal and mark it
+void processSignal(std::vector<int>& signal) {
+    for (size_t i = 0; i < signal.size(); ++i) {
+        // Process the signal (example: double the value)
+        signal[i] *= 2;
+
+        // Mark the processed signal
+        signal[i] |= SIGPROCMARK;
+    }
+}
+
+// Function to display the signal
+void displaySignal(const std::vector<int>& signal) {
+    for (size_t i = 0; i < signal.size(); ++i) {
+        std::cout << signal[i] << " ";
+    }
+    std::cout << std::endl;
+}
+
+int main() {
+    // Example signal
+    std::vector<int> signal = {1, 2, 3, 4, 5};
+
+    std::cout << "Original signal: ";
+    displaySignal(signal);
+
+    // Process the signal
+    processSignal(signal);
+
+    std::cout << "Processed signal: ";
+    displaySignal(signal);
+
+    return 0;
+}
