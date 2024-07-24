@@ -9,8 +9,8 @@ void handle_alarm(int sig)
 }
 
 int main() {
-        // Set up the signal handler for SIGALARM
-        std::signal(SIGALARM, handle_alarm);
+        // Set up the signal handler for SIGALRM
+        std::signal(SIGALRM, handle_alarm);
 
         // Schedule an alarm in 5 seconds
         std::cout << "Setting an alarm for 5 seconds..\n";
