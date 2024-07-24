@@ -1,0 +1,45 @@
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+// Define constants
+const int SIGPROCMARK = 0x80000000; // Using bit 31 to mark processed elements
+
+// Implement function to process the signal
+void processSignal(vector<int>& signal) {
+    for (int i = 0; i < signal.size(); ++i) {
+        // Double the value
+        signal[i] *= 2;
+        // Mark the processed element using SIGPROCMARK (bitwise OR)
+        signal[i] |= SIGPROCMARK;
+    }
+}
+
+// Implement function to display the signal
+void displaySignal(const vector<int>& signal) {
+    for (int i = 0; i < signal.size(); ++i) {
+        cout << signal[i];
+        if (i != signal.size() - 1) {
+            cout << " ";
+        }
+    }
+    cout << endl;
+}
+int main() {
+    // Example signal
+    vector<int> signal = {1, 2, 3, 4, 5};
+
+    // Display original signal
+    cout << "Original Signal: ";
+    displaySignal(signal);
+
+    // Process the signal
+    processSignal(signal);
+
+    // Display processed signal
+    cout << "Processed Signal: ";
+    displaySignal(signal);
+
+    return 0;
+}
