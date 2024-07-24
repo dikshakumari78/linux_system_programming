@@ -1,50 +1,39 @@
 #include <iostream>
 #include <csignal>
 #include <unistd.h>
+#include <cstring>
 
-volatile sig_atomic_t alarm_counter = 0;
+volatile sig_atomic_t alarm_count = 0;
 
-void handle_sigalrm(int signal) {
+void signal_handler(int signal) {
     if (signal == SIGALRM) {
-        std::cout << "Received SIGALRM, counter: " << ++alarm_counter << std::endl;
-        alarm(1);  // Reset the alarm for another second
+        alarm_count++;
+        std::cout << "Received SIGALRM: Alarm count = " << alarm_count << std::endl;
+        alarm(5); // Set the next alarm
+    } else if (signal == SIGINT) {
+        std::cout << "Received SIGINT: Ignoring..." << std::endl;
+    } else if (signal == SIGTERM) {
+        std::cout << "Received SIGTERM: Default action." << std::endl;
+        std::signal(SIGTERM, SIG_DFL); // Restore default behavior
+        raise(SIGTERM); // Re-raise the signal
     }
-}
-
-void handle_sigint(int signal) {
-    if (signal == SIGINT) {
-        std::cout << "Received SIGINT, exiting gracefully..." << std::endl;
-        exit(0);
-    }
-}
-
-void setup_signal_handlers() {
-    // Set up SIGALRM handler
-    struct sigaction sa;
-    sa.sa_handler = handle_sigalrm;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGALRM, &sa, nullptr);
-
-    // Set up SIGINT handler
-    signal(SIGINT, handle_sigint);
-
-    // Ignore SIGTERM
-    signal(SIGTERM, SIG_IGN);
 }
 
 int main() {
-    std::cout << "Starting the program..." << std::endl;
+    struct sigaction sa;
+    std::memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = signal_handler;
 
     // Set up signal handlers
-    setup_signal_handlers();
+    sigaction(SIGALRM, &sa, nullptr);
+    sigaction(SIGINT, &sa, nullptr);
+    sigaction(SIGTERM, &sa, nullptr);
 
-    // Set an alarm to go off in 1 second
-    alarm(1);
+    std::cout << "Starting the alarm. The first alarm will ring in 5 seconds." << std::endl;
+    alarm(5); // Schedule the first alarm in 5 seconds
 
-    // Infinite loop to keep the program running
     while (true) {
-        pause();  
+        pause(); // Wait for signals
     }
 
     return 0;
