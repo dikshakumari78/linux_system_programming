@@ -3,9 +3,10 @@
 
 using namespace std;
 
-const int SIGPROCMARK = 0x80000000; 
+// Step 1: Define constants
+const int SIGPROCMARK = 0x80000000; // Using bit 31 to mark processed elements
 
-Implement function to process the signal with threshold
+// Step 2: Implement function to process the signal with threshold
 void processSignalWithThreshold(vector<int>& signal, int threshold) {
     for (int i = 0; i < signal.size(); ++i) {
         // Check if element exceeds threshold
@@ -18,7 +19,7 @@ void processSignalWithThreshold(vector<int>& signal, int threshold) {
     }
 }
 
-// Implement function to display the signal
+// Step 3: Implement function to display the signal
 void displaySignal(const vector<int>& signal) {
     for (int i = 0; i < signal.size(); ++i) {
         cout << signal[i];
@@ -29,18 +30,23 @@ void displaySignal(const vector<int>& signal) {
     cout << endl;
 }
 
-// Implement main function to demonstrate usage
+// Step 4: Implement main function to demonstrate usage
 int main() {
     // Example signal and threshold
     vector<int> signal = {1, 2, 3, 4, 5};
     int threshold = 3;
 
+    // Display original signal
     cout << "Original Signal: ";
     displaySignal(signal);
+
+    // Process the signal with threshold
     processSignalWithThreshold(signal, threshold);
 
+    // Display processed signal
     cout << "Processed Signal with Threshold (" << threshold << "): ";
     displaySignal(signal);
 
     return 0;
 }
+
