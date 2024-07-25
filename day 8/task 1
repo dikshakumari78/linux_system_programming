@@ -7,8 +7,8 @@
 #include <sys/socket.h>
 
 // Constants for server address and port
-const char* SERVER_ADDRESS = "127.0.0.1";  // Replace with your server's IP address
-const int SERVER_PORT = 12345;              // Replace with your server's port
+const char* SERVER_ADDRESS = "172.20.0.32";  // Replace with your server's IP address
+const int SERVER_PORT = 12345;               // Replace with your server's port
 
 // Global variable to hold socket descriptor
 int serverSocket = 0;
@@ -59,7 +59,8 @@ int main() {
     signal(SIGINT, sigintHandler);
     
     // Print initial message
-    std::cout << "Connected to server. Press Ctrl+C to send message." << std::endl;
+    std::cout << "Connected to server at " << SERVER_ADDRESS << ":" << SERVER_PORT << std::endl;
+    std::cout << "Press Ctrl+C to send message." << std::endl;
     
     // Keep the client program running
     while (true) {
