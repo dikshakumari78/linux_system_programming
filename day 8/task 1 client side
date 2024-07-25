@@ -1,0 +1,57 @@
+#include <iostream>
+#include <csignal>
+#include <cstring>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+const char* SERVER_IP = "127.0.0.1"; 
+const int SERVER_PORT = 8080;
+const char* MESSAGE = "Ctrl+C pressed!";
+
+void sendMessageToServer() {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        std::cerr << "Socket creation failed: " << strerror(errno) << std::endl;
+        return;
+    }
+
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(SERVER_PORT);
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+        std::cerr << "Invalid address/ Address not supported: " << strerror(errno) << std::endl;
+        close(sock);
+        return;
+    }
+
+    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        std::cerr << "Connection Failed: " << strerror(errno) << std::endl;
+        close(sock);
+        return;
+    }
+
+    send(sock, MESSAGE, strlen(MESSAGE), 0);
+    std::cout << "Message sent to server: " << MESSAGE << std::endl;
+
+    close(sock);
+}
+
+void signalHandler(int signum) {
+    std::cout << "Interrupt signal (" << signum << ") received." << std::endl;
+    sendMessageToServer();
+    exit(signum);
+}
+
+int main() {
+    signal(SIGINT, signalHandler);
+
+    std::cout << "Press Ctrl+C to send a message to the server..." << std::endl;
+    while (true) {
+    }
+
+    return 0;
+}
