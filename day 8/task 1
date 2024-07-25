@@ -1,0 +1,71 @@
+#include <iostream>
+#include <cstdlib>
+#include <csignal>
+#include <cstring>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+// Constants for server address and port
+const char* SERVER_ADDRESS = "127.0.0.1";  // Replace with your server's IP address
+const int SERVER_PORT = 12345;              // Replace with your server's port
+
+// Global variable to hold socket descriptor
+int serverSocket = 0;
+
+// Function to handle SIGINT (Ctrl+C)
+void sigintHandler(int signum) {
+    std::cout << "Ctrl+C received. Sending message to server..." << std::endl;
+    
+    // Create a message to send to the server
+    const char* message = "Ctrl+C received from client";
+    
+    // Send the message to the server
+    send(serverSocket, message, strlen(message), 0);
+    
+    // Close the socket and exit
+    close(serverSocket);
+    exit(signum);
+}
+
+int main() {
+    // Initialize a socket for communication with the server
+    struct sockaddr_in serverAddr;
+    
+    // Create socket
+    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        std::cerr << "Socket creation error" << std::endl;
+        return -1;
+    }
+    
+    // Prepare server address structure
+    memset(&serverAddr, '0', sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(SERVER_PORT);
+    
+    // Convert IPv4 and IPv6 addresses from text to binary form
+    if (inet_pton(AF_INET, SERVER_ADDRESS, &serverAddr.sin_addr) <= 0) {
+        std::cerr << "Invalid address/ Address not supported" << std::endl;
+        return -1;
+    }
+    
+    // Connect to the server
+    if (connect(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        std::cerr << "Connection Failed" << std::endl;
+        return -1;
+    }
+    
+    // Register SIGINT signal handler
+    signal(SIGINT, sigintHandler);
+    
+    // Print initial message
+    std::cout << "Connected to server. Press Ctrl+C to send message." << std::endl;
+    
+    // Keep the client program running
+    while (true) {
+        // Simulate some activity (optional)
+        sleep(1);
+    }
+    
+    return 0;
+}
