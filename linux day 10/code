@@ -1,0 +1,25 @@
+#include <iostream>
+#include <unistd.h>
+#include <sys/wait.h>
+
+using namespace std;
+
+int main() {
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        cerr << "Fork failed" << endl;
+        return 1;
+    } else if (pid == 0) { // Child process
+        // Replace the current process with the "ls" command
+        execl("/bin/ls", "ls", "-l", nullptr);
+        cerr << "Exec failed" << endl; // This line won't be reached if execl is successful
+        return 1;
+    } else { // Parent process
+        // Wait for the child process to finish
+        wait(nullptr);
+        cout << "Child process completed" << endl;
+    }
+
+    return 0;
+}
