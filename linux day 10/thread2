@@ -3,35 +3,31 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <cstring>
+#include <semaphore.h>
+#include <errno.h>
 #include "common.h"
 
 int main() {
     // Open shared memory
-    int shm_fd = shm_open(SHARED_MEMORY_NAME, O_CREAT | O_RDWR, 0666);
+    int shm_fd = shm_open(SHARED_MEMORY_NAME, O_RDWR, 0666);
     if (shm_fd == -1) {
         std::cerr << "Error opening shared memory: " << strerror(errno) << std::endl;
-        exit(1);
-    }
-
-    // Set size of shared memory
-    if (ftruncate(shm_fd, sizeof(SharedMemory)) == -1) {
-        std::cerr << "Error setting size of shared memory: " << strerror(errno) << std::endl;
-        exit(1);
+        return 1;
     }
 
     // Map shared memory
     SharedMemory *shared_memory = (SharedMemory *)mmap(nullptr, sizeof(SharedMemory), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (shared_memory == MAP_FAILED) {
         std::cerr << "Error mapping shared memory: " << strerror(errno) << std::endl;
-        exit(1);
+        return 1;
     }
 
     // Initialize semaphores
-    sem_t *sem1 = sem_open(SEMAPHORE1_NAME, O_CREAT, 0666, 1);
-    sem_t *sem2 = sem_open(SEMAPHORE2_NAME, O_CREAT, 0666, 0);
+    sem_t *sem1 = sem_open(SEMAPHORE1_NAME, 0);
+    sem_t *sem2 = sem_open(SEMAPHORE2_NAME, 0);
     if (sem1 == SEM_FAILED || sem2 == SEM_FAILED) {
         std::cerr << "Error opening semaphores: " << strerror(errno) << std::endl;
-        exit(1);
+        return 1;
     }
 
     while (true) {
@@ -63,9 +59,7 @@ int main() {
     close(shm_fd);
     sem_close(sem1);
     sem_close(sem2);
-    sem_unlink(SEMAPHORE1_NAME);
-    sem_unlink(SEMAPHORE2_NAME);
-    shm_unlink(SHARED_MEMORY_NAME);
 
     return 0;
 }
+
