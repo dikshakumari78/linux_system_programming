@@ -1,9 +1,0 @@
-#ifndef COMMON_H
-#define COMMON_H
-
-#define QUEUE_NAME1 "/test_queue1"
-#define QUEUE_NAME2 "/test_queue2"
-#define MAX_SIZE 1024
-#define MSG_STOP "exit"
-
-#endif // COMMON_H
