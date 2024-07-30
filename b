@@ -1,71 +1,98 @@
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <unistd.h>
+#include <thread>
 #include <vector>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <cstring>
 
-using namespace std;
+#define PORT 8080
 
-struct CPUInfo {
-    long user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice;
-};
-
-CPUInfo getCPUInfo() {
-    CPUInfo cpuInfo = {0};
-    ifstream file("/proc/stat");
-    string line;
-    if (getline(file, line)) {
-        istringstream ss(line);
-        string cpu;
-        ss >> cpu; // Skip the "cpu" label
-        ss >> cpuInfo.user >> cpuInfo.nice >> cpuInfo.system >> cpuInfo.idle;
-        ss >> cpuInfo.iowait >> cpuInfo.irq >> cpuInfo.softirq >> cpuInfo.steal;
-        ss >> cpuInfo.guest >> cpuInfo.guest_nice;
+void dataReceiver(int clientSocket) {
+    char buffer[1024];
+    while (true) {
+        ssize_t bytesRead = read(clientSocket, buffer, sizeof(buffer) - 1);
+        if (bytesRead <= 0) break;
+        buffer[bytesRead] = '\0';
+        std::cout << "Data received: " << buffer << std::endl;
+        // Here you would typically send the data to worker processes or IPC mechanism
     }
-    return cpuInfo;
+    close(clientSocket);
 }
 
-long getTotalMemory() {
-    ifstream file("/proc/meminfo");
-    string line;
-    long memTotal = 0;
-    while (getline(file, line)) {
-        if (line.find("MemTotal:") != string::npos) {
-            istringstream ss(line);
-            string label;
-            ss >> label >> memTotal;
-            break;
-        }
+void startServer() {
+    int serverFd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    bind(serverFd, (struct sockaddr *)&address, sizeof(address));
+    listen(serverFd, 3);
+
+    while (true) {
+        int clientSocket = accept(serverFd, NULL, NULL);
+        std::thread(dataReceiver, clientSocket).detach();
     }
-    return memTotal;
-}
-
-void displaySystemInfo() {
-    CPUInfo cpuInfo = getCPUInfo();
-    long totalMemory = getTotalMemory();
-
-    cout << "System Monitor Tool" << endl;
-    cout << "--------------------" << endl;
-    cout << "CPU Usage:" << endl;
-    cout << "User: " << cpuInfo.user << " jiffies" << endl;
-    cout << "Nice: " << cpuInfo.nice << " jiffies" << endl;
-    cout << "System: " << cpuInfo.system << " jiffies" << endl;
-    cout << "Idle: " << cpuInfo.idle << " jiffies" << endl;
-    cout << "IOwait: " << cpuInfo.iowait << " jiffies" << endl;
-    cout << "IRQ: " << cpuInfo.irq << " jiffies" << endl;
-    cout << "SoftIRQ: " << cpuInfo.softirq << " jiffies" << endl;
-    cout << "Steal: " << cpuInfo.steal << " jiffies" << endl;
-    cout << "Guest: " << cpuInfo.guest << " jiffies" << endl;
-    cout << "Guest Nice: " << cpuInfo.guest_nice << " jiffies" << endl;
-    cout << "Total Memory: " << totalMemory / 1024 << " MB" << endl;
 }
 
 int main() {
+    startServer();
+    return 0;
+}
+
+#include <iostream>
+#include <unistd.h>
+
+void processData(const std::string& data) {
+    std::cout << "Processing data: " << data << std::endl;
+}
+
+int main() {
+    std::string data;
     while (true) {
-        system("clear"); // Clear screen (Linux specific)
-        displaySystemInfo();
-        sleep(2); // Update every 2 seconds
+        // Replace with IPC or socket read mechanism
+        data = "Sample Data"; // Placeholder for actual data
+        processData(data);
     }
+    return 0;
+}
+#include <iostream>
+#include <vector>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+void manageWorkers(int numWorkers) {
+    std::vector<pid_t> workers;
+    for (int i = 0; i < numWorkers; ++i) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            execl("./worker", "worker", NULL); // Assumes worker is compiled as "worker"
+            exit(1);
+        } else if (pid > 0) {
+            workers.push_back(pid);
+        }
+    }
+
+    while (true) {
+        int status;
+        pid_t pid = wait(&status);
+        if (pid > 0) {
+            // Restart worker if it crashes
+            pid_t newPid = fork();
+            if (newPid == 0) {
+                execl("./worker", "worker", NULL);
+                exit(1);
+            } else {
+                workers.push_back(newPid);
+            }
+        }
+    }
+}
+
+int main() {
+    int numWorkers = 4; // Number of worker processes
+    manageWorkers(numWorkers);
     return 0;
 }
