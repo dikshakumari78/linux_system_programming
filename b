@@ -2,86 +2,70 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <vector>
 #include <unistd.h>
-#include <iomanip>
-#include <sys/types.h>
-#include <dirent.h>
+#include <vector>
 
-void print_cpu_load() {
-    std::ifstream stat_file("/proc/stat");
-    if (!stat_file.is_open()) {
-        std::cerr << "Unable to open /proc/stat" << std::endl;
-        return;
+using namespace std;
+
+struct CPUInfo {
+    long user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice;
+};
+
+CPUInfo getCPUInfo() {
+    CPUInfo cpuInfo = {0};
+    ifstream file("/proc/stat");
+    string line;
+    if (getline(file, line)) {
+        istringstream ss(line);
+        string cpu;
+        ss >> cpu; // Skip the "cpu" label
+        ss >> cpuInfo.user >> cpuInfo.nice >> cpuInfo.system >> cpuInfo.idle;
+        ss >> cpuInfo.iowait >> cpuInfo.irq >> cpuInfo.softirq >> cpuInfo.steal;
+        ss >> cpuInfo.guest >> cpuInfo.guest_nice;
     }
-
-    std::string line;
-    std::getline(stat_file, line);
-    stat_file.close();
-
-    std::istringstream iss(line);
-    std::string cpu;
-    unsigned long user, nice, system, idle, iowait, irq, softirq, steal;
-    iss >> cpu >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
-
-    unsigned long total = user + nice + system + idle + iowait + irq + softirq + steal;
-    unsigned long active = user + nice + system + irq + softirq + steal;
-    double cpu_load = 100.0 * active / total;
-
-    std::cout << "CPU Load: " << std::fixed << std::setprecision(2) << cpu_load << "%" << std::endl;
+    return cpuInfo;
 }
 
-void print_processes() {
-    DIR* dir;
-    struct dirent* entry;
-    if ((dir = opendir("/proc")) == nullptr) {
-        std::cerr << "Unable to open /proc directory" << std::endl;
-        return;
-    }
-
-    std::vector<pid_t> pids;
-    while ((entry = readdir(dir)) != nullptr) {
-        if (entry->d_type == DT_DIR) {
-            std::string name(entry->d_name);
-            if (name.find_first_not_of("0123456789") == std::string::npos) {
-                pids.push_back(std::stoi(name));
-            }
+long getTotalMemory() {
+    ifstream file("/proc/meminfo");
+    string line;
+    long memTotal = 0;
+    while (getline(file, line)) {
+        if (line.find("MemTotal:") != string::npos) {
+            istringstream ss(line);
+            string label;
+            ss >> label >> memTotal;
+            break;
         }
     }
-    closedir(dir);
+    return memTotal;
+}
 
-    std::cout << std::setw(6) << "PID" << std::setw(20) << "Name" << std::setw(10) << "VMSize" << std::endl;
-    for (pid_t pid : pids) {
-        std::ifstream status_file("/proc/" + std::to_string(pid) + "/status");
-        if (status_file.is_open()) {
-            std::string line;
-            std::string name;
-            std::string vm_size;
+void displaySystemInfo() {
+    CPUInfo cpuInfo = getCPUInfo();
+    long totalMemory = getTotalMemory();
 
-            while (std::getline(status_file, line)) {
-                if (line.rfind("Name:", 0) == 0) {
-                    name = line.substr(6);
-                } else if (line.rfind("VmSize:", 0) == 0) {
-                    vm_size = line.substr(8, line.find('k') - 8);
-                }
-            }
-            status_file.close();
-
-            if (!name.empty() && !vm_size.empty()) {
-                std::cout << std::setw(6) << pid
-                          << std::setw(20) << name
-                          << std::setw(10) << vm_size << std::endl;
-            }
-        }
-    }
+    cout << "System Monitor Tool" << endl;
+    cout << "--------------------" << endl;
+    cout << "CPU Usage:" << endl;
+    cout << "User: " << cpuInfo.user << " jiffies" << endl;
+    cout << "Nice: " << cpuInfo.nice << " jiffies" << endl;
+    cout << "System: " << cpuInfo.system << " jiffies" << endl;
+    cout << "Idle: " << cpuInfo.idle << " jiffies" << endl;
+    cout << "IOwait: " << cpuInfo.iowait << " jiffies" << endl;
+    cout << "IRQ: " << cpuInfo.irq << " jiffies" << endl;
+    cout << "SoftIRQ: " << cpuInfo.softirq << " jiffies" << endl;
+    cout << "Steal: " << cpuInfo.steal << " jiffies" << endl;
+    cout << "Guest: " << cpuInfo.guest << " jiffies" << endl;
+    cout << "Guest Nice: " << cpuInfo.guest_nice << " jiffies" << endl;
+    cout << "Total Memory: " << totalMemory / 1024 << " MB" << endl;
 }
 
 int main() {
     while (true) {
-        std::cout << "\033[2J\033[H"; // Clear screen
-        print_cpu_load();
-        print_processes();
-        sleep(5); // Update every 5 seconds
+        system("clear"); // Clear screen (Linux specific)
+        displaySystemInfo();
+        sleep(2); // Update every 2 seconds
     }
     return 0;
 }
