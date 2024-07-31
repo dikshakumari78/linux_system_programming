@@ -1,15 +1,13 @@
 #!/bin/bash
 
 # Check if the correct number of arguments is provided
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <directory_path> <search_string> <replacement_string>"
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <directory_path>"
     exit 1
 fi
 
-# Get the directory path and strings from the arguments
+# Get the directory path from the argument
 DIRECTORY=$1
-SEARCH_STRING=$2
-REPLACEMENT_STRING=$3
 
 # Check if the provided argument is a directory
 if [ ! -d "$DIRECTORY" ]; then
@@ -17,8 +15,8 @@ if [ ! -d "$DIRECTORY" ]; then
     exit 1
 fi
 
-# Find and replace the string in all files within the directory
-find "$DIRECTORY" -type f -exec sed -i "s/${SEARCH_STRING}/${REPLACEMENT_STRING}/g" {} +
+# Generate the disk usage report and save it to disk_usage_report.txt
+du -sh "$DIRECTORY"/* > disk_usage_report.txt
 
 # Print completion message
-echo "Find and replace operation completed in $DIRECTORY"
+echo "Disk usage report saved to disk_usage_report.txt"
