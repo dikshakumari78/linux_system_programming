@@ -1,0 +1,51 @@
+#include <iostream>
+#include <cstdlib> // For system() function
+#include <unistd.h> // For write() and read() system calls
+#include <cstring>
+
+int main() {
+    // Define messages
+    const char preMessage[] = "Preparing to list directory contents using system call.\n";
+    const char* postMessage = "\nSystem call executed successfully.\n";
+    const char errorMessage[] = "System call failed.\n";
+
+    // Print the preMessage using write()
+    write(STDOUT_FILENO, preMessage, strlen(preMessage));
+
+    // Invoke the system call to list directory contents
+    int result = system("ls -l"); // Corrected command to list directory contents
+
+    // Check the result of the system call
+    if (result == -1) {
+        write(STDERR_FILENO, errorMessage, strlen(errorMessage));
+        return 1;
+    }
+
+    // Print the postMessage using write()
+    write(STDOUT_FILENO, postMessage, strlen(postMessage));
+
+    // Read input from the user and print it back
+    const int BUFFER_SIZE = 256;
+    char buffer[BUFFER_SIZE];
+
+    // Prompt user for input
+    const char prompt[] = "Enter some text: ";
+    write(STDOUT_FILENO, prompt, strlen(prompt));
+
+    // Read input from the user
+    ssize_t bytesRead = read(STDIN_FILENO, buffer, BUFFER_SIZE - 1);
+
+    if (bytesRead < 0) {
+        write(STDERR_FILENO, "Failed to read input.\n", 22);
+        return 1;
+    }
+
+    // Null-terminate the string
+    buffer[bytesRead] = '\0';
+
+    // Print the user's input back to them
+    write(STDOUT_FILENO, "You entered: ", 13);
+    write(STDOUT_FILENO, buffer, bytesRead);
+
+    return 0;
+}
