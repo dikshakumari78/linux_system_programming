@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Check if the correct number of arguments is provided
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <directory_path>"
+    exit 1
+fi
+
+# Get the directory path from the argument
+DIRECTORY=$1
+
+# Check if the provided argument is a directory
+if [ ! -d "$DIRECTORY" ]; then
+    echo "Error: $DIRECTORY is not a directory"
+    exit 1
+fi
+
+# Change permissions of all files within the directory
+find "$DIRECTORY" -type f -exec chmod 755 {} +
+
+# Print completion message
+echo "Permissions of all files in $DIRECTORY have been changed to rwxr-xr-x"
