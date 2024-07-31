@@ -1,59 +1,69 @@
 #include <iostream>
-#include <thread>
-#include <vector>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include <cstring>
-#include <sys/ipc.h>
-#include <sys/msg.h>
 
-#define PORT 8080
+int pipefd1[2]; 
+int pipefd2[2]; 
 
-struct Message {
-    long mtype;
-    char mtext[1024];
-};
-
-void dataReceiver(int clientSocket, int msgQueueId) {
-    char buffer[1024];
-    while (true) {
-        ssize_t bytesRead = read(clientSocket, buffer, sizeof(buffer) - 1);
-        if (bytesRead <= 0) break;
-        buffer[bytesRead] = '\0';
-
-        Message msg;
-        msg.mtype = 1;  // Message type
-        strncpy(msg.mtext, buffer, sizeof(msg.mtext));
-
-        if (msgsnd(msgQueueId, &msg, sizeof(msg.mtext), 0) == -1) {
-            std::cerr << "Failed to send message" << std::endl;
-        }
+void parentSignalHandler(int sig) {
+if (sig == SIGUSR1) {
+ std::cout << "Parent received SIGUSR1" << std::endl;
+} 
+else if (sig == SIGCHLD) {
+    int status;
+    pid_t pid = wait(&status);
+    std::cout << "Child process " << pid << " terminated" << std::endl;
     }
-    close(clientSocket);
 }
 
-void startServer(int msgQueueId) {
-    int serverFd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in address;
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-
-    bind(serverFd, (struct sockaddr *)&address, sizeof(address));
-    listen(serverFd, 3);
-
-    while (true) {
-        int clientSocket = accept(serverFd, NULL, NULL);
-        std::thread(dataReceiver, clientSocket, msgQueueId).detach();
+void childSignalHandler(int sig) {
+    if (sig == SIGUSR1) {
+        std::cout << "Child received SIGUSR1" << std::endl;
     }
 }
 
 int main() {
-    key_t key = ftok("data_ingestion", 65);
-    int msgQueueId = msgget(key, 0666 | IPC_CREAT);
+    if (pipe(pipefd1) == -1 || pipe(pipefd2) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+    pid_t pid = fork();
 
-    startServer(msgQueueId);
+    if (pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) { 
+        close(pipefd1[1]); 
+        close(pipefd2[0]); 
+        signal(SIGUSR1, childSignalHandler);
+        char buffer[100];
+        read(pipefd1[0], buffer, sizeof(buffer));
+        std::cout << "Child received: " << buffer << std::endl;
+        
+        std::string result = "Child task completed";
+        write(pipefd2[1], result.c_str(), result.length() + 1);
+        close(pipefd1[0]);
+        close(pipefd2[1]);
+        kill(getppid(), SIGUSR1);
 
-    return 0;
+ exit(0);
+} 
+else { 
+close(pipefd1[0]); 
+close(pipefd2[1]); 
+signal(SIGUSR1, parentSignalHandler);
+signal(SIGCHLD, parentSignalHandler);
+std::string message = "Hello from parent";
+write(pipefd1[1], message.c_str(), message.length() + 1);
+char buffer[100];
+read(pipefd2[0], buffer, sizeof(buffer));
+std::cout << "Parent received: " << buffer << std::endl;
+close(pipefd1[1]);
+close(pipefd2[0]);
+wait(NULL);
+std::cout << "Parent process exiting" << std::endl;
+}
+ return 0;
 }
