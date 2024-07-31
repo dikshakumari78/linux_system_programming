@@ -1,22 +1,84 @@
 #!/bin/bash
 
+# Function to list all files in the directory
+list_files() {
+    echo "Listing all files in the directory: $DIRECTORY"
+    ls -l "$DIRECTORY"
+}
+
+# Function to display the total number of files
+count_files() {
+    FILE_COUNT=$(find "$DIRECTORY" -type f | wc -l)
+    echo "Total number of files in the directory: $FILE_COUNT"
+}
+
+# Function to copy a specified file to a new location
+copy_file() {
+    if [ -f "$DIRECTORY/$1" ]; then
+        cp "$DIRECTORY/$1" "$2"
+        echo "File $1 copied to $2"
+    else
+        echo "File $1 does not exist in the directory"
+    fi
+}
+
+# Function to move a specified file to a new location
+move_file() {
+    if [ -f "$DIRECTORY/$1" ]; then
+        mv "$DIRECTORY/$1" "$2"
+        echo "File $1 moved to $2"
+    else
+        echo "File $1 does not exist in the directory"
+    fi
+}
+
+# Function to delete a specified file
+delete_file() {
+    if [ -f "$DIRECTORY/$1" ]; then
+        rm "$DIRECTORY/$1"
+        echo "File $1 deleted"
+    else
+        echo "File $1 does not exist in the directory"
+    fi
+}
+
 # Check if the correct number of arguments is provided
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <directory_path>"
+if [ "$#" -lt 2 ]; then
+    echo "Usage: $0 <directory_path> <command> [<file_name> <destination_path>]"
     exit 1
 fi
 
-# Get the directory path from the argument
+# Get the directory path from the first argument
 DIRECTORY=$1
+COMMAND=$2
+FILE_NAME=$3
+DESTINATION=$4
 
-# Check if the provided argument is a directory
+# Check if the provided directory exists
 if [ ! -d "$DIRECTORY" ]; then
     echo "Error: $DIRECTORY is not a directory"
     exit 1
 fi
 
-# Generate the disk usage report and save it to disk_usage_report.txt
-du -sh "$DIRECTORY"/* > disk_usage_report.txt
-
-# Print completion message
-echo "Disk usage report saved to disk_usage_report.txt"
+# Execute the appropriate function based on the command
+case $COMMAND in
+    list)
+        list_files
+        ;;
+    count)
+        count_files
+        ;;
+    copy)
+        copy_file "$FILE_NAME" "$DESTINATION"
+        ;;
+    move)
+        move_file "$FILE_NAME" "$DESTINATION"
+        ;;
+    delete)
+        delete_file "$FILE_NAME"
+        ;;
+    *)
+        echo "Invalid command. Available commands are: list, count, copy, move, delete"
+        exit 1
+        ;;
+esac
