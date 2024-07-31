@@ -15,8 +15,12 @@ if [ ! -d "$DIRECTORY" ]; then
     exit 1
 fi
 
-# Change permissions of all files within the directory
-find "$DIRECTORY" -type f -exec chmod 755 {} +
+# Count the number of files in the directory
+FILE_COUNT=$(find "$DIRECTORY" -type f | wc -l)
 
-# Print completion message
-echo "Permissions of all files in $DIRECTORY have been changed to rwxr-xr-x"
+# Count the number of directories in the directory
+DIR_COUNT=$(find "$DIRECTORY" -type d | wc -l)
+
+# Print the counts with appropriate labels
+echo "Number of files: $FILE_COUNT"
+echo "Number of directories: $DIR_COUNT"
