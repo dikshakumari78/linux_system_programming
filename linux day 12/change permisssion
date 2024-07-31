@@ -1,13 +1,15 @@
 #!/bin/bash
 
 # Check if the correct number of arguments is provided
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <directory_path>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <directory_path> <search_string> <replacement_string>"
     exit 1
 fi
 
-# Get the directory path from the argument
+# Get the directory path and strings from the arguments
 DIRECTORY=$1
+SEARCH_STRING=$2
+REPLACEMENT_STRING=$3
 
 # Check if the provided argument is a directory
 if [ ! -d "$DIRECTORY" ]; then
@@ -15,12 +17,8 @@ if [ ! -d "$DIRECTORY" ]; then
     exit 1
 fi
 
-# Count the number of files in the directory
-FILE_COUNT=$(find "$DIRECTORY" -type f | wc -l)
+# Find and replace the string in all files within the directory
+find "$DIRECTORY" -type f -exec sed -i "s/${SEARCH_STRING}/${REPLACEMENT_STRING}/g" {} +
 
-# Count the number of directories in the directory
-DIR_COUNT=$(find "$DIRECTORY" -type d | wc -l)
-
-# Print the counts with appropriate labels
-echo "Number of files: $FILE_COUNT"
-echo "Number of directories: $DIR_COUNT"
+# Print completion message
+echo "Find and replace operation completed in $DIRECTORY"
