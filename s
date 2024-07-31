@@ -4,53 +4,66 @@
 #include <sys/wait.h>
 #include <cstring>
 
-// Signal handler
-void handle_signal(int signal) {
-    std::cout << "Signal " << signal << " received by process " << getpid() << std::endl;
+int pipefd1[2];
+int pipefd2[2];
+
+void parentSignalHandler(int sig) {
+if (sig == SIGUSR1) {
+ std::cout << "Parent received SIGUSR1" << std::endl;
+}
+else if (sig == SIGCHLD) {
+    int status;
+    pid_t pid = wait(&status);
+    std::cout << "Child process " << pid << " terminated" << std::endl;
+    }
+}
+
+void childSignalHandler(int sig) {
+    if (sig == SIGUSR1) {
+        std::cout << "Child received SIGUSR1" << std::endl;
+    }
 }
 
 int main() {
-    // Set up signal handlers
-    signal(SIGINT, handle_signal);  // Handle Ctrl+C
-    signal(SIGTERM, handle_signal); // Handle termination signal
-
-    // Pipe file descriptors
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
+    if (pipe(pipefd1) == -1 || pipe(pipefd2) == -1) {
         perror("pipe");
-        return 1;
+        exit(EXIT_FAILURE);
     }
-
     pid_t pid = fork();
+
     if (pid == -1) {
         perror("fork");
-        return 1;
-    }
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) {
+        close(pipefd1[1]);
+        close(pipefd2[0]);
+        signal(SIGUSR1, childSignalHandler);
+        char buffer[100];
+        read(pipefd1[0], buffer, sizeof(buffer));
+        std::cout << "Child received: " << buffer << std::endl;
 
-    if (pid == 0) { // Child process
-        close(pipefd[1]); // Close the write end of the pipe
+        std::string result = "Child task completed";
+        write(pipefd2[1], result.c_str(), result.length() + 1);
+        close(pipefd1[0]);
+        close(pipefd2[1]);
+        kill(getppid(), SIGUSR1);
 
-        char buffer[128];
-        ssize_t count;
-        while ((count = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-            buffer[count] = '\0';
-            std::cout << "Child received: " << buffer << std::endl;
-        }
-
-        close(pipefd[0]); // Close the read end of the pipe
-        _exit(0);
-
-    } else { // Parent process
-        close(pipefd[0]); // Close the read end of the pipe
-
-        const char* message = "Hello from parent process!";
-        write(pipefd[1], message, strlen(message));
-
-        close(pipefd[1]); // Close the write end of the pipe
-
-        // Wait for child to finish
-        wait(NULL);
-    }
-
-    return 0;
+ exit(0);
+}
+ else {
+  close(pipefd1[0]);
+  close(pipefd2[1]);
+  signal(SIGUSR1, parentSignalHandler);
+  signal(SIGCHLD, parentSignalHandler);
+  std::string message = "Hello from parent";
+  write(pipefd1[1], message.c_str(), message.length() + 1);
+  char buffer[100];
+  read(pipefd2[0], buffer, sizeof(buffer));
+  std::cout << "Parent received: " << buffer << std::endl;
+  close(pipefd1[1]);
+  close(pipefd2[0]);
+  wait(NULL);
+  std::cout << "Parent process exiting" << std::endl;
+}
+ return 0;
 }
