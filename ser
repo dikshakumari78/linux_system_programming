@@ -3,49 +3,92 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
-int main() {
-    int sockfd;
-    struct sockaddr_in server_addr, client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
+void handle_client(int client_socket) {
     char buffer[BUFFER_SIZE];
-    const char *response = "Hello, Client!";
+    int bytes_received;
+    int file_fd;
+    char filename[256];
 
-    // Create UDP socket
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    // Receive the filename from the client
+    if (recv(client_socket, filename, sizeof(filename), 0) <= 0) {
+        perror("Filename receive error");
+        close(client_socket);
+        return;
+    }
+
+    // Open file to write data
+    file_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (file_fd < 0) {
+        perror("File open error");
+        close(client_socket);
+        return;
+    }
+
+    // Receive file data from the client
+    while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0) {
+        if (write(file_fd, buffer, bytes_received) < 0) {
+            perror("File write error");
+            close(file_fd);
+            close(client_socket);
+            return;
+        }
+    }
+
+    if (bytes_received < 0) {
+        perror("Receive error");
+    }
+
+    printf("File received and saved as %s\n", filename);
+
+    // Cleanup
+    close(file_fd);
+    close(client_socket);
+}
+
+int main() {
+    int server_fd, client_socket;
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
+
+    // Create socket
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("Socket creation error");
         exit(EXIT_FAILURE);
     }
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(PORT);
-    if (bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    // Bind the socket
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("Bind failed");
-        close(sockfd);
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    // Listen for incoming connections
+    if (listen(server_fd, 3) < 0) {
+        perror("Listen failed");
+        close(server_fd);
         exit(EXIT_FAILURE);
     }
 
     printf("Server is listening on port %d\n", PORT);
 
     while (1) {
-        int len = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, 0, (struct sockaddr *) &client_addr, &client_addr_len);
-        if (len < 0) {
-            perror("Receive failed");
-            close(sockfd);
-            exit(EXIT_FAILURE);
+        if ((client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+            perror("Accept failed");
+            continue;
         }
-        buffer[len] = '\0'; 
-        printf("Received message: %s\n", buffer);
-        if (sendto(sockfd, response, strlen(response), 0, (struct sockaddr *) &client_addr, client_addr_len) < 0) {
-            perror("Send failed");
-            close(sockfd);
-            exit(EXIT_FAILURE);
-        }
+        handle_client(client_socket);
     }
-    close(sockfd);
+    close(server_fd);
     return 0;
 }
+
