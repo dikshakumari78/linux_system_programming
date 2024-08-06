@@ -3,39 +3,76 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
 int main() {
     int sockfd;
-    struct sockaddr_in server_addr;
+    struct sockaddr_in serv_addr;
     char buffer[BUFFER_SIZE];
-    const char *message = "Hello, Server!";
+    char file_path[256];
+    int file_fd;
+    ssize_t bytes_read;
 
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    // Create socket
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("Socket creation error");
         exit(EXIT_FAILURE);
     }
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    server_addr.sin_port = htons(PORT);
-    if (sendto(sockfd, message, strlen(message), 0, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
-        perror("Send failed");
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
-    printf("Message sent\n");
 
-    int len = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, 0, NULL, NULL);
-    if (len < 0) {
-        perror("Receive failed");
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+
+    // Convert IPv4 and IPv6 addresses from text to binary form
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+        perror("Invalid address/ Address not supported");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
-    buffer[len] = '\0';  
-    printf("Server response: %s\n", buffer);
+
+    // Connect to the server
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("Connection failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    // Prompt user for file path
+    printf("Enter the file path to send: ");
+    fgets(file_path, sizeof(file_path), stdin);
+    file_path[strcspn(file_path, "\n")] = 0; // Remove newline character
+
+    // Send filename to the server
+    if (send(sockfd, file_path, strlen(file_path), 0) < 0) {
+        perror("Filename send error");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    // Open file to read
+    file_fd = open(file_path, O_RDONLY);
+    if (file_fd < 0) {
+        perror("File open error");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+    while ((bytes_read = read(file_fd, buffer, BUFFER_SIZE)) > 0) {
+        if (send(sockfd, buffer, bytes_read, 0) < 0) {
+            perror("Send error");
+            close(file_fd);
+            close(sockfd);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (bytes_read < 0) {
+        perror("File read error");
+    }
+
+    printf("File sent successfully\n");
+    close(file_fd);
     close(sockfd);
     return 0;
 }
